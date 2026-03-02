@@ -150,8 +150,8 @@ func ListDir(dir string) []string {
 	return paths
 }
 
-func WriteFile(path string, content string) error {
-	err := os.WriteFile(path, []byte(content), 0644)
+func WriteFileByByte(path string, content []byte) error {
+	err := os.WriteFile(path, content, 0644)
 
 	if err != nil {
 		return err
@@ -160,8 +160,16 @@ func WriteFile(path string, content string) error {
 	return nil
 }
 
+func ReadFileByByte(path string) ([]byte, error) {
+	return os.ReadFile(path)
+}
+
+func WriteFile(path string, content string) error {
+	return WriteFileByByte(path, []byte(content))
+}
+
 func ReadFile(path string) (string, error) {
-	bytes, err := os.ReadFile(path)
+	bytes, err := ReadFileByByte(path)
 
 	if err != nil {
 		return "", err
