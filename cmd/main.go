@@ -4,90 +4,75 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/InkShaStudio/go-command"
 	"github.com/inksha/sumi/internal/plugins"
 	"github.com/inksha/sumi/internal/utils/common"
 )
 
+const (
+	NAME        = "sumi"
+	DESCRIPTION = "Always want to see summer in you eyes."
+)
+
 func Execute() {
 	localPlugins := plugins.ListPlugin()
 
-	subCommands := []*command.SCommand{
-		plugins.RegisterCommand(),
+	args := os.Args[1:]
+
+	internalCommands := map[string]func(){
+		"plugin": func() {
+			cmd := plugins.RegisterCommand()
+
+			if err := command.RegisterCommand(cmd).Execute(); err != nil {
+				common.Exit(err.Error())
+			}
+		},
+	}
+
+	if len(args) == 0 {
+		println(DESCRIPTION)
+
+		return
+	}
+
+	name := args[0]
+	localCommands := []string{""}
+
+	for cmd, handler := range internalCommands {
+		localCommands = append(localCommands, cmd)
+
+		if strings.EqualFold(cmd, name) {
+			handler()
+			return
+		}
 	}
 
 	for _, details := range localPlugins {
-		args := []command.ICommandArgValue{}
-		flags := []command.ICommandFlagValue{}
+		localCommands = append(localCommands, details.Name)
 
-		for _, arg := range details.Manifest.Args {
-			args = append(args,
-				command.
-					NewCommandArg[string](arg.Name).
-					ChangeDescription(arg.Description).
-					ChangeValue(arg.Value),
-			)
+		if details.Name == name {
+			cmd := exec.Command(details.Execute, args[1:]...)
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				common.Exit(err.Error())
+			}
+			println(string(output))
+			break
 		}
-
-		for _, flag := range details.Manifest.Flags {
-			flags = append(flags,
-				command.
-					NewCommandFlag[string](flag.Name).
-					ChangeDescription(flag.Description).
-					ChangeValue(flag.Value),
-			)
-		}
-
-		cmd := command.
-			NewCommand(details.Name).
-			ChangeDescription(details.Manifest.Description).
-			AddArgs(args...).
-			AddFlags(flags...).
-			RegisterHandler(func(cmd *command.SCommand) {
-				restArgs := []string{}
-
-				for _, arg := range cmd.Args {
-					current := arg.GetValue().(*string)
-					restArgs = append(restArgs, *current)
-				}
-
-				for _, flag := range cmd.Flags {
-					current := flag.GetValue().(*string)
-					if *current == "" {
-						continue
-					}
-
-					restArgs = append(restArgs, fmt.Sprintf("--%s=%s", flag.GetName(), *current))
-				}
-
-				execute := exec.Command(details.Execute, restArgs...)
-
-				output, err := execute.CombinedOutput()
-
-				if err != nil {
-					common.Exit(err.Error())
-				}
-
-				fmt.Println(string(output))
-			})
-
-		subCommands = append(subCommands, cmd)
 	}
 
-	sumi := command.NewCommand("sumi").
-		ChangeDescription("Always want to see summer in you eyes.").
-		RegisterHandler(func(cmd *command.SCommand) {
-			fmt.Println("Hello, Sumi!")
-		}).
-		AddSubCommand(
-			subCommands...,
-		)
+	commands := strings.Join(localCommands, fmt.Sprintf("\n  - %s ", NAME))
 
-	cmd := command.RegisterCommand(sumi)
+	println(
+		fmt.Sprintf(
+			"\n%s\n%s\n\n%s%s\n",
+			NAME,
+			DESCRIPTION,
+			"Usage: ",
+			commands,
+		),
+	)
 
-	if err := cmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
 }
