@@ -21,9 +21,11 @@ func Execute() {
 
 	args := os.Args[1:]
 
+	cmd := command.NewCommand(NAME).ChangeDescription(DESCRIPTION)
+
 	internalCommands := map[string]func(){
 		"plugin": func() {
-			cmd := plugins.RegisterCommand()
+			cmd.AddSubCommand(plugins.RegisterCommand())
 
 			if err := command.RegisterCommand(cmd).Execute(); err != nil {
 				common.Exit(err.Error())
