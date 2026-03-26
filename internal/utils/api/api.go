@@ -4,24 +4,28 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"time"
 )
+
+var httpClient = &http.Client{
+	Timeout: 30 * time.Second,
+}
 
 func Get(url string) (map[string]any, error) {
 	var data map[string]any
-	httpClient := http.Client{}
-	resp, err := httpClient.Get(url)
 
+	resp, err := httpClient.Get(url)
+	if err != nil {
+		return data, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return data, err
 	}
 
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-
-	json.Unmarshal(body, &data)
-
-	if err != nil {
+	if err := json.Unmarshal(body, &data); err != nil {
 		return data, err
 	}
 
@@ -29,15 +33,11 @@ func Get(url string) (map[string]any, error) {
 }
 
 func GetRaw(url string) ([]byte, error) {
-	httpClient := http.Client{}
 	resp, err := httpClient.Get(url)
-
 	if err != nil {
 		return nil, err
 	}
-
 	defer resp.Body.Close()
 
 	return io.ReadAll(resp.Body)
-
 }

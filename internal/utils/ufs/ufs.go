@@ -133,6 +133,18 @@ func MkDir(dir string, all bool) error {
 	return os.Mkdir(dir, 0755)
 }
 
+func MkDirIfNotExist(dir string, all bool) error {
+	if Exists(dir) {
+		return nil
+	}
+
+	if all {
+		return os.MkdirAll(dir, 0755)
+	}
+
+	return os.Mkdir(dir, 0755)
+}
+
 func ListDir(dir string) []string {
 	entries, err := os.ReadDir(dir)
 

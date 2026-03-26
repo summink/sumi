@@ -40,7 +40,7 @@ func Execute() {
 	}
 
 	name := args[0]
-	localCommands := []string{""}
+	localCommands := []string{}
 
 	for cmd, handler := range internalCommands {
 		localCommands = append(localCommands, cmd)
@@ -65,16 +65,9 @@ func Execute() {
 		}
 	}
 
-	commands := strings.Join(localCommands, fmt.Sprintf("\n  - %s ", NAME))
-
-	println(
-		fmt.Sprintf(
-			"\n%s\n%s\n\n%s%s\n",
-			NAME,
-			DESCRIPTION,
-			"Usage: ",
-			commands,
-		),
-	)
+	fmt.Printf("\n%s\n%s\n\nUsage:\n", NAME, DESCRIPTION)
+	for _, c := range localCommands {
+		fmt.Printf("  - %s %s\n", NAME, c)
+	}
 
 }

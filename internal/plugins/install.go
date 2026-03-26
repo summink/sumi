@@ -2,6 +2,7 @@ package plugins
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path"
 	"runtime"
@@ -14,25 +15,27 @@ import (
 	"github.com/inksha/sumi/internal/utils/ufs"
 )
 
-func exitGuard(err error) {
-	if err == nil {
-		return
+func cleanupOnFailure(dir string) {
+	if dir != "" && ufs.Exists(dir) {
+		os.RemoveAll(dir)
 	}
-
-	common.Exit("install plugin failed: " + err.Error())
 }
 
 func downloadPlugin(repo string, version string, system string, arch string) {
 	client := github.NewClient(nil)
 	releases, _, err := client.Repositories.ListReleases(context.Background(), orgName, repo, &github.ListOptions{})
 
-	exitGuard(err)
+	if err != nil {
+		common.Exit("failed to list releases: " + err.Error())
+	}
 
 	assetName := system + "-" + arch
 
 	if system == "windows" {
 		assetName += ".exe"
 	}
+
+	outputDir := path.Join(cfg.PluginDir, strings.ReplaceAll(repo, pluginPrefix, ""))
 
 topReleases:
 	for _, release := range releases {
@@ -41,18 +44,42 @@ topReleases:
 			if strings.EqualFold(*asset.Name, assetName) || strings.HasSuffix(*asset.Name, assetName) {
 
 				assetURL := asset.GetURL()
-				assetInfo, _ := api.Get(assetURL)
-				browserDownloadURL := assetInfo["browser_download_url"].(string)
-				assetData, _ := api.GetRaw(browserDownloadURL)
-				outputDir := path.Join(cfg.PluginDir, strings.ReplaceAll(repo, pluginPrefix, ""))
+				assetInfo, err := api.Get(assetURL)
+				if err != nil {
+					common.Exit("failed to get asset info: " + err.Error())
+				}
+
+				browserDownloadURL, ok := assetInfo["browser_download_url"].(string)
+				if !ok {
+					common.Exit("failed to get download URL: invalid response format")
+				}
+
+				assetData, err := api.GetRaw(browserDownloadURL)
+				if err != nil {
+					common.Exit("failed to download asset: " + err.Error())
+				}
+
+				if len(assetData) == 0 {
+					common.Exit("failed to download asset: empty response")
+				}
+
 				output := path.Join(outputDir, assetName)
 
-				exitGuard(ufs.MkDir(outputDir, true))
-				exitGuard(ufs.WriteFileByByte(output, assetData))
+				if err := ufs.MkDirIfNotExist(outputDir, true); err != nil {
+					common.Exit("failed to create plugin directory: " + err.Error())
+				}
 
-				os.Chmod(output, 0755)
+				if err := ufs.WriteFileByByte(output, assetData); err != nil {
+					cleanupOnFailure(outputDir)
+					common.Exit("failed to write plugin file: " + err.Error())
+				}
 
-				println("install plugin "+repo+release.GetTagName()+" success to ", output)
+				if err := os.Chmod(output, 0755); err != nil {
+					cleanupOnFailure(outputDir)
+					common.Exit("failed to set plugin permissions: " + err.Error())
+				}
+
+				fmt.Printf("install plugin %s%s success to %s\n", repo, release.GetTagName(), output)
 
 				break topReleases
 			}

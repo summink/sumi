@@ -64,15 +64,28 @@ func findPluginByGithub() []PluginManifest {
 
 			url := strings.ReplaceAll(*repo.ContentsURL, "{+path}", manifestFile)
 
-			reps, _ := api.Get(url)
+			reps, err := api.Get(url)
+			if err != nil {
+				fmt.Printf("Warning: failed to get manifest for %s: %v\n", repo.GetName(), err)
+				continue
+			}
 
 			var manifest PluginManifest
 
-			if url, ok := reps["download_url"].(string); ok {
-				rawManifest, _ := api.GetRaw(url)
-				if err := json.Unmarshal(rawManifest, &manifest); err == nil {
-					plugins = append(plugins, manifest)
-				}
+			downloadURL, ok := reps["download_url"].(string)
+			if !ok {
+				fmt.Printf("Warning: invalid manifest URL for %s\n", repo.GetName())
+				continue
+			}
+
+			rawManifest, err := api.GetRaw(downloadURL)
+			if err != nil {
+				fmt.Printf("Warning: failed to download manifest for %s: %v\n", repo.GetName(), err)
+				continue
+			}
+
+			if err := json.Unmarshal(rawManifest, &manifest); err == nil {
+				plugins = append(plugins, manifest)
 			}
 		}
 	}

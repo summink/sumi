@@ -7,8 +7,16 @@ import (
 	"github.com/InkShaStudio/go-command"
 )
 
-var cfg = PluginConfig{
-	PluginDir: path.Join(os.Getenv("USERPROFILE"), ".sumi", "plugins"),
+var cfg PluginConfig
+
+func init() {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		homeDir = "."
+	}
+	cfg = PluginConfig{
+		PluginDir: path.Join(homeDir, ".sumi", "plugins"),
+	}
 }
 
 func RegisterCommand() *command.SCommand {
