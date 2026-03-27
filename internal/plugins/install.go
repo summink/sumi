@@ -14,6 +14,7 @@ import (
 	"github.com/inksha/sumi/internal/utils/api"
 	"github.com/inksha/sumi/internal/utils/common"
 	"github.com/inksha/sumi/internal/utils/ufs"
+	sumicc "github.com/summink/sumi-common-command"
 )
 
 func cleanupOnFailure(dir string) {
@@ -33,7 +34,7 @@ func getInstalledVersion(pluginName string) string {
 		return ""
 	}
 
-	var manifest PluginManifest
+	var manifest sumicc.PluginManifest
 	if err := json.Unmarshal(data, &manifest); err != nil {
 		return ""
 	}

@@ -13,10 +13,11 @@ import (
 	"github.com/inksha/sumi/internal/utils/api"
 	"github.com/inksha/sumi/internal/utils/common"
 	"github.com/inksha/sumi/internal/utils/ufs"
+	sumicc "github.com/summink/sumi-common-command"
 )
 
-func findPlugin() []PluginManifest {
-	plugins := []PluginManifest{}
+func findPlugin() []sumicc.PluginManifest {
+	plugins := []sumicc.PluginManifest{}
 
 	if !ufs.Exists(cfg.PluginDir) {
 		ufs.MkDir(cfg.PluginDir, true)
@@ -33,7 +34,7 @@ func findPlugin() []PluginManifest {
 		manifest := path.Join(item, manifestFile)
 		if ufs.Exists(manifest) {
 			if value, err := ufs.ReadFileByByte(manifest); err == nil {
-				var manifest PluginManifest
+				var manifest sumicc.PluginManifest
 				if err := json.Unmarshal(value, &manifest); err == nil {
 					plugins = append(plugins, manifest)
 				}
@@ -45,7 +46,7 @@ func findPlugin() []PluginManifest {
 	return plugins
 }
 
-func findPluginByGithub() []PluginManifest {
+func findPluginByGithub() []sumicc.PluginManifest {
 	client := github.NewClient(nil)
 
 	opts := &github.RepositoryListByOrgOptions{Type: "public"}
@@ -56,7 +57,7 @@ func findPluginByGithub() []PluginManifest {
 		common.Exit(err.Error())
 	}
 
-	plugins := []PluginManifest{}
+	plugins := []sumicc.PluginManifest{}
 
 	for _, repo := range repos {
 
@@ -70,7 +71,7 @@ func findPluginByGithub() []PluginManifest {
 				continue
 			}
 
-			var manifest PluginManifest
+			var manifest sumicc.PluginManifest
 
 			downloadURL, ok := reps["download_url"].(string)
 			if !ok {
@@ -100,7 +101,7 @@ func list() *command.SCommand {
 		ChangeDescription("list plugins").
 		AddFlags(online).
 		RegisterHandler(func(cmd *command.SCommand) {
-			plugins := []PluginManifest{}
+			plugins := []sumicc.PluginManifest{}
 
 			if online.Value {
 				plugins = findPluginByGithub()
