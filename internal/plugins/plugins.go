@@ -30,6 +30,7 @@ func RegisterCommand() *command.SCommand {
 			uninstall(),
 			update(),
 			info(),
+			newPlugin(),
 		)
 
 	return cmd
