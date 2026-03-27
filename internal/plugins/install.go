@@ -99,6 +99,24 @@ func downloadPlugin(repo string, version string, system string, arch string) {
 				common.Exit("failed to get download URL: invalid response format")
 			}
 
+			// Look for checksum file
+			var expectedChecksum string
+			checksumFileName := assetName + ".sha256"
+			for _, checksumAsset := range targetRelease.Assets {
+				if *checksumAsset.Name == checksumFileName {
+					checksumURL := checksumAsset.GetURL()
+					checksumInfo, err := api.Get(checksumURL)
+					if err == nil {
+						if checksumDownloadURL, ok := checksumInfo["browser_download_url"].(string); ok {
+							if checksumData, err := api.GetRaw(checksumDownloadURL); err == nil {
+								expectedChecksum = strings.TrimSpace(strings.Split(string(checksumData), " ")[0])
+							}
+						}
+					}
+					break
+				}
+			}
+
 			fmt.Printf("Downloading %s...\n", assetName)
 
 			assetData, err := api.GetWithProgress(browserDownloadURL, func(downloaded, total int64) {
@@ -120,6 +138,15 @@ func downloadPlugin(repo string, version string, system string, arch string) {
 
 			if len(assetData) == 0 {
 				common.Exit("failed to download asset: empty response")
+			}
+
+			// Verify checksum if available
+			if expectedChecksum != "" {
+				actualChecksum := api.CalculateSHA256(assetData)
+				if !strings.EqualFold(actualChecksum, expectedChecksum) {
+					common.Exit(fmt.Sprintf("checksum mismatch: expected %s, got %s", expectedChecksum, actualChecksum))
+				}
+				fmt.Println("Checksum verified ✓")
 			}
 
 			output := path.Join(outputDir, assetName)

@@ -1,6 +1,8 @@
 package api
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -49,6 +51,24 @@ func GetRaw(url string) ([]byte, error) {
 type ProgressCallback func(downloaded, total int64)
 
 func GetWithProgress(url string, onProgress ProgressCallback) ([]byte, error) {
+	const maxRetries = 3
+	var lastErr error
+
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		data, err := downloadWithProgress(url, onProgress)
+		if err == nil {
+			return data, nil
+		}
+		lastErr = err
+		if attempt < maxRetries {
+			time.Sleep(time.Second * time.Duration(attempt))
+		}
+	}
+
+	return nil, lastErr
+}
+
+func downloadWithProgress(url string, onProgress ProgressCallback) ([]byte, error) {
 	resp, err := downloadClient.Get(url)
 	if err != nil {
 		return nil, err
@@ -79,4 +99,9 @@ func GetWithProgress(url string, onProgress ProgressCallback) ([]byte, error) {
 	}
 
 	return data, nil
+}
+
+func CalculateSHA256(data []byte) string {
+	hash := sha256.Sum256(data)
+	return hex.EncodeToString(hash[:])
 }
